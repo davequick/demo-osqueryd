@@ -1,0 +1,109 @@
+version: '3.4'
+
+services:
+
+  zookeeper:
+    build:
+      context: zookeeper/
+      args:
+        ZOOKEEPER_VERSION: 3.4.6
+    ports:
+      - 2181:2181
+    networks:
+      - demo
+# uncomment to force storage to your docker host machine
+#    volumes:
+#      - ./data/zookeeper:/opt/zookeeper/data
+    healthcheck:
+      test: ["CMD", "/opt/zookeeper/zkServer.sh", "status"]
+      interval: 5s
+      timeout: 5s
+      retries: 3
+
+  kafka:
+   build:
+     context: kafka/
+     args:
+       KAFKA_VERSION: 0.10.0.0
+   ports:
+     - 9092:9092
+   networks:
+     - demo
+# uncomment to force storage to your docker host machine
+#   volumes:
+#     - ./data/kafka/:/kafka/
+#     - ./kafka/server.properties/:/opt/kafka_2.11-0.10.0.0/config/server.properties:ro
+   environment:
+     KAFKA_PORT: 9092
+     KAFKA_DELETE_TOPIC_ENABLE: "true"
+     KAFKA_BROKER_ID: 0
+     KAFKA_ADVERTISED_PORT: 9092
+     KAFKA_ADVERTISED_HOST_NAME: "${DOCKERHOST}"
+     KAFKA_ADVERTISED_LISTENERS: "PLAINTEXT://${DOCKERHOST}:9092"
+     KAFKA_ZOOKEEPER_CONNECT: "${DOCKERHOST}:2181"
+     KAFKA_CREATE_TOPICS: "OsQueryD:1:1,GenericLogStash:1:1"
+     KAFKA_LOG_DIRS: /kafka/logs
+   depends_on:
+     - zookeeper
+
+#  logstash:
+#    build:
+#      context: logstash/
+#      args:
+#        ELK_VERSION: 6.4.2
+#    volumes:
+#      - ./logstash/config/logstash.yml:/usr/share/logstash/config/logstash.yml:ro
+#      - ./logstash/pipeline:/usr/share/logstash/pipeline:ro
+#    ports:
+#      - "5000:5000"
+#      - "9600:9600"
+#    networks:
+#      - demo
+#    environment:
+#      LS_JAVA_OPTS: "-Xmx256m -Xms256m"
+#    depends_on:
+#      - elasticsearch
+#      - kafka
+
+#  elasticsearch:
+#    build:
+#      context: elasticsearch/
+#      args:
+#        ELK_VERSION: 6.4.2
+#    volumes:
+#      - ./elasticsearch/config/elasticsearch.yml:/usr/share/elasticsearch/config/elasticsearch.yml:ro
+#    ports:
+#      - "9200:9200"
+#      - "9300:9300"
+#    networks:
+#      - demo
+#    environment:
+#      ES_JAVA_OPTS: "-Xmx256m -Xms256m"
+
+#  kibana:
+#    build:
+#      context: kibana/
+#      args:
+#        ELK_VERSION: 6.4.2
+#    volumes:
+#      - ./kibana/config/:/usr/share/kibana/config:ro
+#    ports:
+#      - "5601:5601"
+#    networks:
+#      - demo
+#    depends_on:
+#      - elasticsearch
+
+  osqueryd:
+    build:
+      context: osqueryd/
+    volumes:
+      - ./osqueryd/osquery.example.conf:/etc/osquery/osquery.conf:ro
+    networks:
+      - demo
+    depends_on:
+      - kafka
+
+networks:
+  demo:
+    driver: bridge
