@@ -1,0 +1,1 @@
+docker exec demo-osqueryd_osqueryd_1 cp /sbin/hwclock /sbin/badactor
